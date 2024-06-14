@@ -1,0 +1,11 @@
+variables:
+  - name: resourceGroupName
+    value: "rg-Devsu-test"
+  - name: azureOrganizationName
+    value: "amiguel2150"
+  - name: azureProjectName
+    value: "DevsuTest"
+  - name: acrName
+    value: "testacrDevsu"
+  - name: imageName
+    value: "devsutest"

@@ -1,0 +1,39 @@
+# Deployment
+---   
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appdevsu-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: appdevsu
+  template:
+    metadata:
+      labels:
+        app: appdevsu
+    spec:
+      containers:
+      - name: testacrdevsu
+        image: testacrdevsu.azurecr.io/testacrdevsu:latest
+        env:
+        - name: ENV_PORT
+          value: "8000"
+        ports:
+        - containerPort: 8000
+
+# loadbalancer
+---      
+apiVersion: v1
+kind: Service
+metadata:
+  name: appdevsu-service
+spec:
+  selector:
+    app: appdevsu
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: LoadBalancer

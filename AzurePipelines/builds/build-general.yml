@@ -1,0 +1,58 @@
+name: InfraBuild-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger: none
+
+parameters:
+    
+  - name: PoolName
+    type: string
+    default: Default
+    values:
+      - ubuntu-latest
+      - Default
+    displayName: "Pool Names"
+
+
+resources:
+  repositories:
+    - repository: DevsuTest
+      type: git
+      name: DevsuTest
+      ref: "refs/heads/main"
+
+stages:
+- stage: build
+
+  jobs:
+  - job: build_Infrastructure
+    pool:
+      vmImage: ${{parameters.PoolName}}
+    workspace:
+      clean: all
+    displayName:  Building Infrastructure Artifact
+
+    steps:
+# Por practicidad y dado que todo lo tenemos en el mismo repo, se realizará una copia del mismo repo utilizando resources, sin embargo, se podría simplificar con - checkout: self
+# La idea del build es crear un artefacto por repo para poder consumir SOLO lo que se requiera sin manipular o estar desplazando otra información. Por practicidad este ejemplo solo se creará un artefacto con todo el contenido
+      - checkout: DevsuTest #self
+        clean: true
+
+      - script: tree $(System.DefaultWorkingDirectory)
+        name: Display_build_repo
+        displayName: 'Display repo'
+      
+      - task: CopyFiles@2
+        name: Copy_repo
+        inputs:
+          Content: |
+            **/**
+          TargetFolder: '$(Build.ArtifactStagingDirectory)'
+        displayName: 'Copy Repo'
+
+      - task: PublishPipelineArtifact@1
+        name: Publish_repo
+        condition: succeeded()
+        inputs:
+          targetpath: '$(Build.ArtifactStagingDirectory)'
+          artifact: 'Repo'
+        displayName: 'Publish Repo'

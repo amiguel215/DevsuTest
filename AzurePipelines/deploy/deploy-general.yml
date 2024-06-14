@@ -1,0 +1,33 @@
+name: Deploy-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger: none
+
+parameters:
+  - name: PoolName
+    type: string
+    default: Default
+    values:
+      - ubuntu-latest
+      - Default
+    displayName: "Pool Names"
+
+resources:
+  pipelines:
+    - pipeline: "azureRepo"
+      project: "DevsuTest"
+      source: "Build-general"
+      branch: "refs/heads/main"
+      trigger: none
+
+stages: 
+# Por buenas prácticas realizaré el ejercicio en yml template; donde se consumirá el artefacto creado en el build y mediante jobs ejecutaremos los diferentes requisitos de la prueba
+  - stage: Deploy_Pipeline
+    displayName: Deploy Pipeline
+    jobs:
+      - template: 'jobs/job-general.yml'
+        parameters:
+          poolName: ${{parameters.PoolName}}
+          ServiceConnectionAzure: 'Service1'
+          ServiceConnectionACR: 'acrService1'
+          ServiceConnectionAKS: 'kctlService1'
+          ServiceConnectionSC: 'sonarService1'

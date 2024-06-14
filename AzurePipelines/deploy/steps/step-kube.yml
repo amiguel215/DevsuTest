@@ -1,0 +1,37 @@
+parameters:
+  ServiceConnectionACR: ""
+  ServiceConnectionAKS: ""
+
+steps:
+  - task: PowerShell@2
+    inputs:
+      targetType: inline
+      script: |
+        Get-ChildItem -Path Env:
+    displayName: 'Display Variables'
+
+  - download: azureRepo
+    name: Download_Repo
+    displayName: 'Download Artifact from Build-general pipeline'
+
+  - powershell: Get-ChildItem -Path $(Pipeline.Workspace) -Recurse -Force
+    displayName: 'Listing Checkout files'
+
+  - task: Docker@2
+    name: dockerlogin
+    condition: succeeded()
+    inputs:
+      containerRegistry: ${{ parameters.ServiceConnectionACR }}
+      command: 'login'
+      addPipelineData: false
+    displayName: 'Login ACR'
+
+  - task: KubernetesManifest@0
+    condition: succeeded()
+    inputs:
+      action: deploy
+      kubernetesServiceConnection: ${{ parameters.ServiceConnectionAKS }}
+      namespace: 'default'
+      manifests: '$(Pipeline.Workspace)/azureRepo/Repo/AzurePipelines/deploy/manifest/service.yaml'
+      rolloutStatusTimeout: 120
+    displayName: 'kubectl deploy'

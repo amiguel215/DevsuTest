@@ -1,0 +1,83 @@
+parameters:
+  poolName: ""
+  ServiceConnectionAzure: ""
+  ServiceConnectionACR: ""
+  ServiceConnectionAKS: ""
+  ServiceConnectionSC: ""
+
+jobs:
+  - job: UnitTest
+    pool:
+      vmImage: ${{ parameters.poolName }}
+    workspace:
+      clean: all
+    variables:
+      - template: '../variables/variables-general.yml' 
+    steps:
+      - checkout: none #Recordar que el el artefacto traerá toda la información
+      - template: '../steps/step-unitTest.yml'
+        parameters:
+          ServiceConnectionSC: ${{ parameters.ServiceConnectionSC }}
+    timeoutInMinutes: 300
+    cancelTimeoutInMinutes: 300
+    displayName: "Unit Test"
+
+  - job: IaC
+    dependsOn:
+    - UnitTest
+    condition: succeeded('UnitTest')
+    pool:
+      vmImage: ${{ parameters.poolName }}
+    workspace:
+      clean: all
+    steps:
+      - checkout: none #Recordar que el el artefacto traerá toda la información
+      - template: '../steps/step-IaC-tf.yml'
+        parameters:
+          ServiceConnectionAzure: ${{ parameters.ServiceConnectionAzure }}
+    timeoutInMinutes: 300
+    cancelTimeoutInMinutes: 300
+    displayName: "Deploy Infrastructure"
+
+
+  - job: Docker_Build_Push
+    dependsOn:
+    - UnitTest
+    - IaC
+    condition: succeeded('IaC')
+    pool:
+      vmImage: ${{ parameters.poolName }}
+    workspace:
+      clean: all
+    variables:
+      - template: '../variables/variables-general.yml'  
+    steps:
+      - checkout: none #Recordar que el el artefacto traerá toda la información
+      - template: '../steps/step-docker.yml'
+        parameters:
+          ServiceConnectionACR: ${{ parameters.ServiceConnectionACR }}
+    timeoutInMinutes: 300
+    cancelTimeoutInMinutes: 300
+    displayName: "Docker Build&Push"
+
+  - job: AKS
+    dependsOn:
+    - Docker_Build_Push
+    condition: succeeded('Docker_Build_Push')
+    pool:
+      vmImage: ${{ parameters.poolName }}
+    workspace:
+      clean: all
+    variables:
+      - template: '../variables/variables-general.yml'  
+    steps:
+      - checkout: none #Recordar que el el artefacto traerá toda la información
+      - template: '../steps/step-kube.yml'
+        parameters:
+          ServiceConnectionACR: ${{ parameters.ServiceConnectionACR }}
+          ServiceConnectionAKS: ${{ parameters.ServiceConnectionAKS }}
+    timeoutInMinutes: 300
+    cancelTimeoutInMinutes: 300
+    displayName: "Deploy APP - AKS"
+
+

@@ -1,0 +1,53 @@
+parameters:
+  ServiceConnectionSC: ""
+
+steps:
+  - task: PowerShell@2
+    inputs:
+      targetType: inline
+      script: |
+        Get-ChildItem -Path Env:
+    displayName: 'Display Variables'
+
+  - download: azureRepo
+    name: Download_Repo
+    displayName: 'Download Artifact from Build-general pipeline'
+
+  - powershell: Get-ChildItem -Path $(Pipeline.Workspace) -Recurse -Force
+    displayName: 'Listing Checkout files'
+
+  - task: SonarCloudPrepare@2
+    condition: succeeded()
+    inputs:
+      SonarCloud: '${{ parameters.ServiceConnectionSC }}'
+      organization: '$(azureOrganizationName)'
+      scannerMode: 'CLI'
+      configMode: 'manual'
+      cliProjectKey: 'amiguel2150_DevsuTest'
+      cliProjectName: '$(azureProjectName)'
+      cliSources: '.'
+
+  - task: SonarCloudAnalyze@2
+    condition: succeeded()
+    inputs:
+      jdkversion: 'JAVA_HOME_17_X64'
+
+  - task: SonarCloudPublish@2
+    condition: succeeded()
+    inputs:
+      pollingTimeoutSec: '300'
+
+  - task: Npm@1
+    condition: succeeded()
+    inputs:
+      command: 'install'
+      workingDir: '$(Pipeline.Workspace)/azureRepo/Repo'
+    displayName: 'Install Node Dependencies'
+
+  - task: Npm@1
+    condition: succeeded()
+    inputs:
+      command: 'custom'
+      workingDir: '$(Pipeline.Workspace)/azureRepo/Repo'
+      customCommand: 'run test'
+    displayName: 'Run Node test'
